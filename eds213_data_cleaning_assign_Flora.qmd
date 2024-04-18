@@ -1,0 +1,170 @@
+---
+title: "eds213_data_cleaning_assign_Flora"
+format: html
+editor: visual
+---
+
+We cleaned the \`Snow_cover\` column during class. Inspiring yourself from the steps we followed, do the following in a quarto document:
+
+1\. Clean the \`Water_cover\` column to transform it into the correct data type and respect expectations for a percentage
+
+2\. Clean the \`Land_cover\` column to transform it into the correct data type and respect expectations for a percentage
+
+3\. Use the relationship between the three cover columns (Snow, Water, Land) to infer missing values where possible and recompute the \`Total_cover\` column
+
+\*\*Add comments to your quarto document about your decisions and assumptions\*\*, this will be part of the grading.
+
+The expectations are:
+
+-   The qmd should run and
+
+-   Output a csv file named \`all_cover_fixed_YOURNAME.csv\` in the \`data/processed\` folder.
+
+**Note**: We recommend starting by importing the csv file with the corrected \`Snow_cover\` column (\`data/processed/snow_cover.csv\`) we generated during class (my code \[here\](https://github.com/UCSB-Library-Research-Data-Services/bren-meds213-data-cleaning/blob/later/data-cleaning.qmd))
+
+WATER SURVEY & LAND SURVEY FIX
+
+```{r}
+#| message: false  
+
+# Libraries
+library(tidyverse)
+
+# file names
+datadir_raw <- "data/raw/"
+
+datadir_processed <- "data/processed/"
+
+species_file <- "ASDN_Daily_species.csv"
+
+snowsurvey_file <- "ASDN_Snow_survey.csv"
+```
+
+```{r}
+
+#reading in dataset that has fixed snow column 
+snow_processed_dat <- read_csv("~/Documents/2_Areas/Areas_MEDS/Spring_Quarter/EDS213_DataManagement/bren-meds213-data-cleaning/data/processed/snow_cover.csv")
+
+#glimpse(snow_processed_dat)
+```
+
+So now that we have processed the snow_cover data, we still need to process water and land. We see that Snow is now dbl and we want Water and Land cover to be the same (eventually). We will repeat much of snow_cover column cleaning methods to clean these next two columns.
+
+```{r}
+
+# filter() function filters rows where Water_cover, when converted to numeric,
+  # is NA (missing). as.numeric() is used to convert Water_cover to numeric type,
+  # and is.na() checks for NA values in the resulting numeric vector.
+
+snow_processed_dat %>% count(Water_cover) %>%
+filter(is.na(as.numeric(Water_cover)))
+```
+
+We see that there's a bunch of NA values (734), n/a's and unk's. Let's convert the n/a and unk into NA's as well.
+
+```{r}
+snow_water_fixed <- snow_processed_dat %>%
+  mutate(Water_cover = ifelse(Water_cover=="n/a", NA, Water_cover))
+
+snow_water_fixed <- snow_water_fixed %>% 
+  mutate(Water_cover = ifelse(Water_cover=="unk", NA, Water_cover))
+
+```
+
+repeat this for land survey
+
+```{r}
+all_fixed <- snow_water_fixed %>%
+  mutate(Land_cover = ifelse(Land_cover=="n/a", NA, Land_cover))
+
+all_fixed <- all_fixed %>% 
+  mutate(Land_cover= ifelse(Land_cover=="unk", NA, Land_cover))
+
+```
+
+Check if everything is changed to NA's
+
+```{r}
+all_fixed %>% filter(is.na(as.numeric(Water_cover))) %>% count(Water_cover)
+
+all_fixed %>% filter(is.na(as.numeric(Land_cover))) %>% count(Land_cover)
+```
+
+Unlike the snow_cover column, there doesn't seem to be any water_cover or land_cover that's labeled "\<1"
+
+```{r}
+all_fixed %>%
+   filter(Water_cover == "<1" | Land_cover == "<1") 
+
+```
+
+now transform data
+
+```{r}
+all_fixed <- all_fixed %>%
+  mutate(Land_cover = as.numeric(Land_cover)) 
+
+all_fixed <- all_fixed %>% mutate(Water_cover = as.numeric(Water_cover))
+
+```
+
+Check that we don't have values we aren't expecting
+
+```{r}
+#checking for negative values and values > 100 ... there seem to be some 
+all_fixed %>% filter(Land_cover < 0 | Land_cover > 100 | Water_cover <0 | Water_cover > 100)
+
+#change these values to NA 
+all_fixed <- all_fixed %>%
+  mutate(Land_cover = case_when(Land_cover > 100 ~ NA, 
+                                Snow_cover > 100 ~ NA, 
+                                Land_cover < 0 ~ NA, 
+                                Snow_cover < 0 ~ NA))
+```
+
+Interpolate one cover from the two other covers
+
+This is my strategy, which uses case_when() to identify three different cases:
+
+1\) case when land is NA and water / snow are not na's, then 100 - (snow + water) = land
+
+2\) case when water is NA and Snow / Lands are not na's, then 100 - (snow + land ) = water
+
+3\) case when now is NA and Land/ Water are not na's, then 100 - (land + water) = snow
+
+```{r}
+
+all_fixed <- all_fixed %>% 
+  mutate(
+    Land_cover = case_when(
+      is.na(Land_cover) & !is.na(Water_cover) & !is.na(Snow_cover) ~ 100 - (Snow_cover + Water_cover),
+      TRUE ~ Land_cover  # Keep existing Land_cover value if none of the conditions are met
+    ),
+    Water_cover = case_when(
+      is.na(Water_cover) & !is.na(Land_cover) & !is.na(Snow_cover) ~ 100 - (Snow_cover + Land_cover),
+      TRUE ~ Water_cover  # Keep existing Water_cover value if none of the conditions are met
+    ),
+    Snow_cover = case_when(
+      is.na(Snow_cover) & !is.na(Land_cover) & !is.na(Water_cover) ~ 100 - (Land_cover + Water_cover),
+      TRUE ~ Snow_cover  # Keep existing Snow_cover value if none of the conditions are met
+    )
+  )
+
+#all_fixed <- all_fixed %>% mutate(Land_cover = Total_cover - (Snow_cover + Water_cover)) 
+
+all_fixed 
+```
+
+Check that Total_cover is all = 100
+
+```{r}
+all_fixed %>% filter(Total_cover != 100 ) #check where total_cover is not 100. there're 4700 something rows like this 
+
+all_fixed <- all_fixed %>% filter(Total_cover == 100) #keep rows where that is not the case. 
+
+all_fixed
+```
+
+```{r}
+write_csv(all_fixed, file.path(datadir_processed, "all_cover_fixed_FLORA.csv"))
+```

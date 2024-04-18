@@ -1,10 +1,15 @@
 ---
 title: "eds213_data_cleaning_assign_Flora"
+author: "Flora Hamilton"
 format: html
 editor: visual
 ---
 
-GITHUB REPOSITORY FORK: https://github.com/floraham/bren-meds213-data-cleaning.git
+GITHUB REPOSITORY FORK LINK:
+
+<https://github.com/floraham/bren-meds213-data-cleaning.git>
+
+------------------------------------------------------------------------
 
 We cleaned the \`Snow_cover\` column during class. Inspiring yourself from the steps we followed, do the following in a quarto document:
 

@@ -4,6 +4,8 @@ format: html
 editor: visual
 ---
 
+GITHUB REPOSITORY FORK: https://github.com/floraham/bren-meds213-data-cleaning.git
+
 We cleaned the \`Snow_cover\` column during class. Inspiring yourself from the steps we followed, do the following in a quarto document:
 
 1\. Clean the \`Water_cover\` column to transform it into the correct data type and respect expectations for a percentage
@@ -22,13 +24,14 @@ The expectations are:
 
 **Note**: We recommend starting by importing the csv file with the corrected \`Snow_cover\` column (\`data/processed/snow_cover.csv\`) we generated during class (my code \[here\](https://github.com/UCSB-Library-Research-Data-Services/bren-meds213-data-cleaning/blob/later/data-cleaning.qmd))
 
-WATER SURVEY & LAND SURVEY FIX
+### WATER SURVEY & LAND SURVEY FIX
 
 ```{r}
 #| message: false  
 
 # Libraries
 library(tidyverse)
+library(here)
 
 # file names
 datadir_raw <- "data/raw/"
@@ -40,10 +43,10 @@ species_file <- "ASDN_Daily_species.csv"
 snowsurvey_file <- "ASDN_Snow_survey.csv"
 ```
 
-```{r}
+```{r warning = FALSE}
 
 #reading in dataset that has fixed snow column 
-snow_processed_dat <- read_csv("~/Documents/2_Areas/Areas_MEDS/Spring_Quarter/EDS213_DataManagement/bren-meds213-data-cleaning/data/processed/snow_cover.csv")
+snow_processed_dat <- read_csv(here("data", "processed","snow_cover.csv"))
 
 #glimpse(snow_processed_dat)
 ```
@@ -51,7 +54,6 @@ snow_processed_dat <- read_csv("~/Documents/2_Areas/Areas_MEDS/Spring_Quarter/ED
 So now that we have processed the snow_cover data, we still need to process water and land. We see that Snow is now dbl and we want Water and Land cover to be the same (eventually). We will repeat much of snow_cover column cleaning methods to clean these next two columns.
 
 ```{r}
-
 # filter() function filters rows where Water_cover, when converted to numeric,
   # is NA (missing). as.numeric() is used to convert Water_cover to numeric type,
   # and is.na() checks for NA values in the resulting numeric vector.
@@ -84,7 +86,7 @@ all_fixed <- all_fixed %>%
 
 Check if everything is changed to NA's
 
-```{r}
+```{r warning = FALSE}
 all_fixed %>% filter(is.na(as.numeric(Water_cover))) %>% count(Water_cover)
 
 all_fixed %>% filter(is.na(as.numeric(Land_cover))) %>% count(Land_cover)
@@ -92,7 +94,7 @@ all_fixed %>% filter(is.na(as.numeric(Land_cover))) %>% count(Land_cover)
 
 Unlike the snow_cover column, there doesn't seem to be any water_cover or land_cover that's labeled "\<1"
 
-```{r}
+```{r warning = FALSE, message=FALSE}
 all_fixed %>%
    filter(Water_cover == "<1" | Land_cover == "<1") 
 
@@ -100,7 +102,7 @@ all_fixed %>%
 
 now transform data
 
-```{r}
+```{r warning = FALSE, message=FALSE}
 all_fixed <- all_fixed %>%
   mutate(Land_cover = as.numeric(Land_cover)) 
 
@@ -110,7 +112,7 @@ all_fixed <- all_fixed %>% mutate(Water_cover = as.numeric(Water_cover))
 
 Check that we don't have values we aren't expecting
 
-```{r}
+```{r warning = FALSE, message=FALSE}
 #checking for negative values and values > 100 ... there seem to be some 
 all_fixed %>% filter(Land_cover < 0 | Land_cover > 100 | Water_cover <0 | Water_cover > 100)
 
@@ -158,7 +160,7 @@ all_fixed
 Check that Total_cover is all = 100
 
 ```{r}
-all_fixed %>% filter(Total_cover != 100 ) #check where total_cover is not 100. there're 4700 something rows like this 
+all_fixed %>% filter(Total_cover != 100 ) #check where total_cover is not 100. there're 5000 something rows like this 
 
 all_fixed <- all_fixed %>% filter(Total_cover == 100) #keep rows where that is not the case. 
 
